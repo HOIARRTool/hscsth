@@ -899,9 +899,6 @@ def load_heatmap_excel(file_obj, sheet_name: str = DEFAULT_HEATMAP_SHEET) -> tup
             ordered_groups.append(g)
 
     return long_df, ordered_groups
-df["dimension"] = df["dimension"].replace({
-    "1. งานทำงานเป็นทีม": "1. การทำงานเป็นทีม"
-})
 
 def build_heatmap_figure(long_df: pd.DataFrame, title_text: str = "") -> go.Figure:
     df = long_df.copy()
