@@ -22,6 +22,8 @@ H_RED_BG = "#FF2B2B"       # แดงสด
 H_ORANGE_BG = "#EF6C00"    # ส้มแก่
 H_YELLOW_BG = "#F3E58A"    # เหลืองนวลตา
 H_GREEN_BG = "#2E7D32"     # เขียวเข้ม
+H_MISSING_BG = "#E8EEF6"   # เทาอ่อนสำหรับช่องไม่มีข้อมูล
+H_MISSING_FG = "#64748B"
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -61,7 +63,7 @@ def classify_score(score: float) -> tuple[str, str]:
 
 def heatmap_bg_color(score) -> str:
     if pd.isna(score):
-        return "#FFFFFF"
+        return H_MISSING_BG
     score = float(score)
     if score < 60:
         return H_RED_BG
@@ -74,7 +76,7 @@ def heatmap_bg_color(score) -> str:
 
 def heatmap_font_color(score) -> str:
     if pd.isna(score):
-        return "#000000"
+        return H_MISSING_FG
     score = float(score)
     if score < 60:
         return "#FFFFFF"
@@ -126,12 +128,22 @@ def dedupe_labels(labels):
 
 
 def get_heatmap_display_mode(unit_count: int) -> dict:
-    """Keep matrices with very few columns compact."""
+    """
+    Control matrix width.
+
+    When many units are displayed, forcing the chart to fit the browser width
+    makes each cell too narrow. A fixed wide Plotly canvas keeps numbers legible;
+    the user can horizontally scroll / zoom as needed.
+    """
     if unit_count <= 1:
         return {"compact": True, "width": 760}
-    elif unit_count == 2:
+    if unit_count == 2:
         return {"compact": True, "width": 920}
-    return {"compact": False, "width": None}
+    if unit_count <= 18:
+        return {"compact": False, "width": None}
+
+    # Around 40 px per unit keeps the cell text readable in the all-groups view.
+    return {"compact": True, "width": max(1450, 220 + unit_count * 42)}
 
 
 # =========================================================
@@ -656,6 +668,27 @@ def build_heatmap_figure(long_df: pd.DataFrame, title_text: str = "") -> go.Figu
 
     fig = go.Figure()
 
+    # Render missing values as a soft grey layer underneath the main heatmap.
+    # This prevents blank cells from looking like a display error while keeping
+    # them visually distinct from true 0% scores, which remain red.
+    missing_mask = np.isnan(z)
+    if missing_mask.any():
+        missing_z = np.where(missing_mask, 1, np.nan)
+        fig.add_trace(
+            go.Heatmap(
+                z=missing_z,
+                x=col_labels,
+                y=row_labels,
+                zmin=0,
+                zmax=1,
+                colorscale=[[0, H_MISSING_BG], [1, H_MISSING_BG]],
+                showscale=False,
+                hoverinfo="skip",
+                xgap=1,
+                ygap=1,
+            )
+        )
+
     fig.add_trace(
         go.Heatmap(
             z=z,
@@ -686,11 +719,33 @@ def build_heatmap_figure(long_df: pd.DataFrame, title_text: str = "") -> go.Figu
             y=text_y,
             mode="text",
             text=text_values,
-            textfont=dict(size=10, color=text_colors),
+            textfont=dict(size=11, color=text_colors),
             hoverinfo="skip",
             showlegend=False,
         )
     )
+
+    # Optional dash marks for cells with no valid denominator / no data.
+    missing_x = []
+    missing_y = []
+    for rlab in pivot.index:
+        for clab in pivot.columns:
+            if pd.isna(pivot.loc[rlab, clab]):
+                missing_x.append(clab)
+                missing_y.append(rlab)
+
+    if missing_x:
+        fig.add_trace(
+            go.Scatter(
+                x=missing_x,
+                y=missing_y,
+                mode="text",
+                text=["—"] * len(missing_x),
+                textfont=dict(size=11, color=H_MISSING_FG),
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        )
 
     unit_count = len(col_labels)
     display_mode = get_heatmap_display_mode(unit_count)
@@ -699,13 +754,13 @@ def build_heatmap_figure(long_df: pd.DataFrame, title_text: str = "") -> go.Figu
         title=None,
         paper_bgcolor="#F8FBFF",
         plot_bgcolor="#F8FBFF",
-        margin=dict(l=6, r=10, t=30, b=20),
-        height=max(720, 28 * len(row_labels) + 180),
+        margin=dict(l=20, r=20, t=40, b=30),
+        height=max(760, 31 * len(row_labels) + 210),
         width=display_mode["width"],
     )
 
-    fig.update_xaxes(title_text="", side="top", tickangle=-35, showgrid=False, tickfont=dict(size=11), automargin=True)
-    fig.update_yaxes(title_text="", autorange="reversed", showgrid=False, tickfont=dict(size=10), automargin=True)
+    fig.update_xaxes(title_text="", side="top", tickangle=-35, showgrid=False, tickfont=dict(size=10), automargin=True)
+    fig.update_yaxes(title_text="", autorange="reversed", showgrid=False, tickfont=dict(size=11), automargin=True)
     return fig
 
 
@@ -713,9 +768,14 @@ def render_heatmap_page(heatmap_source: Path, heatmap_sheet: str, selected_page:
     long_df, groups = load_heatmap_excel(heatmap_source, sheet_name=heatmap_sheet)
 
     if selected_page == "Color-coded Matrix: ภาพรวมทุกกลุ่ม":
-        filtered = long_df.copy()
+        # Use only the workbook columns under group="ภาพรวม".
+        # In the rebuilt HSCS*_interac workbook, these columns are aggregated by "งาน"
+        # across every กลุ่มตามสรพ. This prevents the all-groups page from showing
+        # duplicated unit columns split by group.
+        overall_mask = long_df["group"].astype(str).str.strip().eq("ภาพรวม")
+        filtered = long_df[overall_mask].copy() if overall_mask.any() else long_df.copy()
         page_title = "Color-coded Matrix: ภาพรวมทุกกลุ่ม"
-        page_desc = "Color-coded Matrix แยกตามกลุ่มงานจากแถวบนสุด"
+        page_desc = "Color-coded Matrix ภาพรวมรวมตามงาน ข้ามทุกกลุ่มตาม สรพ."
     else:
         target_group = selected_page.replace("Color-coded Matrix: ", "", 1)
         filtered = long_df[long_df["group"] == target_group].copy()
@@ -761,6 +821,10 @@ def render_heatmap_page(heatmap_source: Path, heatmap_sheet: str, selected_page:
 
     fig = build_heatmap_figure(filtered, title_text="")
     display_mode = get_heatmap_display_mode(filtered["unit"].nunique())
+
+    if display_mode["compact"] and filtered["unit"].nunique() > 18:
+        st.caption("มุมมองนี้มีหลายหน่วยงาน จึงแสดงเป็นแผนภาพกว้างขึ้นเพื่อให้อ่านตัวเลขได้ชัดขึ้น สามารถเลื่อนแนวนอนหรือซูมด้วยเครื่องมือของกราฟได้")
+
     st.plotly_chart(fig, use_container_width=not display_mode["compact"])
 
     with st.expander("ดูคำอธิบายรหัสมิติย่อย", expanded=False):
@@ -866,6 +930,7 @@ st.sidebar.markdown(
 - 🟠 ส้ม: % Positive Score 60–70 = เร่งพัฒนา
 - 🟡 เหลือง: % Positive Score 70.1–80 = ควรพัฒนาต่อเนื่อง
 - 🟢 เขียว: % Positive Score > 80 = ควรส่งเสริม
+- ⚪ เทา: ไม่มีข้อมูล / ไม่มีตัวหารที่ใช้คำนวณ
 """
 )
 
