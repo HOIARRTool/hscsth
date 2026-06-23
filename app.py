@@ -763,7 +763,6 @@ def render_heatmap_page(heatmap_source, heatmap_sheet: str, selected_page: str):
             default=all_units,
             key=f"hm_unit_{selected_page}"
         )
-        show_table = st.checkbox("แสดงตารางสีด้านล่าง", value=True, key=f"hm_table_{selected_page}")
 
     filtered = filtered[
         filtered["dimension"].isin(dim_filter) &
@@ -791,16 +790,6 @@ def render_heatmap_page(heatmap_source, heatmap_sheet: str, selected_page: str):
         )
         st.dataframe(show_map, use_container_width=True, hide_index=True)
 
-    if show_table:
-        pivot = (
-            filtered.assign(
-                row_label=filtered["sub_code"].replace("", np.nan).fillna("NA")
-            )
-            .pivot(index="row_label", columns="unit", values="score")
-            .sort_index()
-        )
-        st.markdown("### ตาราง Heatmap แบบเติมสีแต่ละตัวเลข")
-        st.dataframe(style_heatmap_table(pivot), use_container_width=False)
 
 
 def render_quadrant_page(quad_source, quad_sheet: str):
@@ -910,6 +899,7 @@ heatmap_pages = ["Heatmap: ภาพรวมทุกกลุ่ม"]
 if heatmap_source is not None:
     try:
         _, group_names = load_heatmap_excel(heatmap_source, sheet_name=DEFAULT_HEATMAP_SHEET)
+        group_names = [g for g in group_names if str(g).strip() != "ภาพรวม"]
         heatmap_pages += [f"Heatmap: {g}" for g in group_names]
     except Exception:
         pass
