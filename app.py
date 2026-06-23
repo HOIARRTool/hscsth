@@ -33,20 +33,9 @@ H_GREEN_BG = "#2E7D32"
 
 # Default files / sheets
 DEFAULT_QUAD_FILE = Path("plotgraph_quadrant_infographic.xlsx")
-BASE_DIR = Path(__file__).resolve().parent
-
-HSCS_YEAR_CONFIG = {
-    "2568": {
-        "label": "ปี 2568",
-        "file": BASE_DIR / "HSCS2568_interac.xlsx",
-        "sheet": "HSCS2568",
-    },
-    "2569": {
-        "label": "ปี 2569",
-        "file": BASE_DIR / "HSCS2569_interac.xlsx",
-        "sheet": "HSCS2569",
-    },
-}
+DEFAULT_HEATMAP_FILE = Path("HSCS2568_interac.xlsx")
+DEFAULT_QUAD_SHEET = "HSCS2568 (2)"
+DEFAULT_HEATMAP_SHEET = "HSCS2568"
 
 REPORT_URL = "https://sites.google.com/view/mch-hscs67-68/%E0%B8%A0%E0%B8%B2%E0%B8%9E%E0%B8%A3%E0%B8%A7%E0%B8%A1?authuser=0"
 REPORT_PREVIEW_IMAGE = Path("hscs_report_preview.png")
@@ -1256,4 +1245,3 @@ else:
         st.warning("ไม่พบไฟล์ Color-coded Matrix Excel (`HSCS2568_interac.xlsx`) ในโฟลเดอร์โปรเจกต์")
         st.stop()
     render_heatmap_page(heatmap_source, DEFAULT_HEATMAP_SHEET, page)
-
