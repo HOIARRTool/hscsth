@@ -82,7 +82,7 @@ def heatmap_font_color(score) -> str:
 
 def get_dimension_colors() -> dict:
     return {
-        "1. งานทำงานเป็นทีม": "#4472C4",
+        "1. การทำงานเป็นทีม": "#4472C4",
         "2. บุคลากรและพื้นที่การทำงาน": "#ED7D31",
         "3. การเป็นองค์กรแห่งการเรียนรู้ มีการพัฒนาอย่างต่อเนื่อง": "#70AD47",
         "4. การตอบสนองต่อความคลาดเคลื่อน": "#C00000",
@@ -899,7 +899,9 @@ def load_heatmap_excel(file_obj, sheet_name: str = DEFAULT_HEATMAP_SHEET) -> tup
             ordered_groups.append(g)
 
     return long_df, ordered_groups
-
+df["dimension"] = df["dimension"].replace({
+    "1. งานทำงานเป็นทีม": "1. การทำงานเป็นทีม"
+})
 
 def build_heatmap_figure(long_df: pd.DataFrame, title_text: str = "") -> go.Figure:
     df = long_df.copy()
