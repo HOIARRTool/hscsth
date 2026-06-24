@@ -942,18 +942,92 @@ def build_heatmap_figure(long_df: pd.DataFrame, title_text: str = "") -> go.Figu
     return fig
 
 
+
+def _normalize_header_text(series: pd.Series) -> pd.Series:
+    """Normalize workbook header values for robust filtering."""
+    return series.astype(str).str.replace("\n", " ", regex=False).str.strip()
+
+
+def select_all_groups_matrix(long_df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
+    """
+    Select columns for 'Color-coded Matrix: ภาพรวมทุกกลุ่ม'.
+
+    New/rebuilt workbooks can contain an explicit group='ภาพรวม' section with
+    one column per unit/work area. Use it when it is truly unit-level.
+
+    Legacy workbooks, especially HSCS2568_interac.xlsx, may contain only one
+    overall column named 'ภาพรวม'. In that case, showing only that column makes
+    the matrix collapse into one unit. For legacy files, fall back to all
+    non-overall unit columns.
+    """
+    df = long_df.copy()
+    overall_tokens = {"ภาพรวม", "", "undefined", "none", "nan"}
+
+    col_headers = (
+        df[["col_index", "group", "division", "unit"]]
+        .drop_duplicates()
+        .copy()
+    )
+    col_headers["group_norm"] = _normalize_header_text(col_headers["group"])
+    col_headers["division_norm"] = _normalize_header_text(col_headers["division"])
+    col_headers["unit_norm"] = _normalize_header_text(col_headers["unit"])
+    col_headers["unit_norm_lower"] = col_headers["unit_norm"].str.lower()
+    col_headers["group_norm_lower"] = col_headers["group_norm"].str.lower()
+    col_headers["division_norm_lower"] = col_headers["division_norm"].str.lower()
+
+    # Preferred path for rebuilt 2569 workbook:
+    # explicit group='ภาพรวม' with multiple real unit/work-area columns.
+    explicit_overall_cols = col_headers[col_headers["group_norm"].eq("ภาพรวม")].copy()
+    if not explicit_overall_cols.empty:
+        real_overall_cols = explicit_overall_cols[
+            ~explicit_overall_cols["unit_norm_lower"].isin(overall_tokens)
+        ]
+        if real_overall_cols["col_index"].nunique() >= 2:
+            selected_cols = real_overall_cols["col_index"].tolist()
+            return (
+                df[df["col_index"].isin(selected_cols)].copy(),
+                "Color-coded Matrix ภาพรวมรวมตามงาน ข้ามทุกกลุ่มตาม สรพ.",
+            )
+
+        # If the explicit overall group has several columns, keep them except
+        # the single grand-total column where possible.
+        if explicit_overall_cols["col_index"].nunique() >= 2:
+            selected_cols = real_overall_cols["col_index"].tolist()
+            if selected_cols:
+                return (
+                    df[df["col_index"].isin(selected_cols)].copy(),
+                    "Color-coded Matrix ภาพรวมรวมตามงาน ข้ามทุกกลุ่มตาม สรพ.",
+                )
+
+    # Legacy path for 2568 workbook:
+    # exclude grand-total/overall columns and show every real unit column.
+    overall_col_mask = (
+        col_headers["unit_norm"].eq("ภาพรวม")
+        | col_headers["division_norm"].eq("ภาพรวม")
+        | col_headers["group_norm"].eq("ภาพรวม")
+    )
+    real_unit_mask = ~col_headers["unit_norm_lower"].isin(overall_tokens)
+    legacy_cols = col_headers.loc[~overall_col_mask & real_unit_mask, "col_index"].tolist()
+
+    if legacy_cols:
+        return (
+            df[df["col_index"].isin(legacy_cols)].copy(),
+            "Color-coded Matrix ภาพรวมทุกหน่วยงาน ข้ามทุกกลุ่มตาม สรพ.",
+        )
+
+    # Last-resort fallback: keep old behavior rather than showing nothing.
+    return df.copy(), "Color-coded Matrix ภาพรวมทุกกลุ่ม"
+
+
 def render_heatmap_page(heatmap_source: Path, heatmap_sheet: str, selected_page: str, selected_year: str):
     long_df, groups = load_heatmap_excel(heatmap_source, sheet_name=heatmap_sheet)
 
     if selected_page == "Color-coded Matrix: ภาพรวมทุกกลุ่ม":
-        # Use only the workbook columns under group="ภาพรวม".
-        # In the rebuilt HSCS*_interac workbook, these columns are aggregated by "งาน"
-        # across every กลุ่มตามสรพ. This prevents the all-groups page from showing
-        # duplicated unit columns split by group.
-        overall_mask = long_df["group"].astype(str).str.strip().eq("ภาพรวม")
-        filtered = long_df[overall_mask].copy() if overall_mask.any() else long_df.copy()
+        # Use rebuilt all-unit overview columns when available.
+        # If an older workbook has only one grand-total 'ภาพรวม' column,
+        # fall back to the legacy behavior: show all real unit columns.
+        filtered, page_desc = select_all_groups_matrix(long_df)
         page_title = "Color-coded Matrix: ภาพรวมทุกกลุ่ม"
-        page_desc = "Color-coded Matrix ภาพรวมรวมตามงาน ข้ามทุกกลุ่มตาม สรพ."
     else:
         target_group = selected_page.replace("Color-coded Matrix: ", "", 1)
         filtered = long_df[long_df["group"] == target_group].copy()
