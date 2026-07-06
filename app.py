@@ -43,7 +43,7 @@ HSCS_YEAR_CONFIG = {
 
 REPORT_URL = "https://sites.google.com/view/mch-hscs67-68/%E0%B8%A0%E0%B8%B2%E0%B8%9E%E0%B8%A3%E0%B8%A7%E0%B8%A1?authuser=0"
 REPORT_PREVIEW_IMAGE = BASE_DIR / "hscs_report_preview.png"
-MFU_LOGO_URL = "https://mfu.ac.th/fileadmin/_processed_/6/7/csm_logo_mfu_3d_colour_15e5a7a50f.png?raw=true"
+
 HAI_LOGO_URL = "https://github.com/HOIARRTool/appqtbi/blob/main/messageImage_1763018963411.jpg?raw=true"
 
 
@@ -960,7 +960,7 @@ def render_overview_dashboard_page(excel_bytes: bytes, heatmap_sheet: str, year_
     sub_count = int(df[["sub_code", "sub_name"]].drop_duplicates().shape[0])
 
     st.markdown(
-        f'<div class="hscs-hero"><div class="hscs-hero-text"><h1>MFU-MCH HSCS Dashboard</h1>'
+        f'<div class="hscs-hero"><div class="hscs-hero-text"><h1>HSCS Dashboard</h1>'
         f'<p>Hospital Safety Culture Survey: executive overview + drill-down Color-coded Matrix | {html.escape(year_label)}</p></div>'
         f'<div class="hscs-hero-logos"><img class="hscs-hero-logo" src="{MFU_LOGO_URL}" alt="Mae Fah Luang University logo">'
         f'<img class="hscs-hero-logo" src="{HAI_LOGO_URL}" alt="Healthcare Accreditation Institute logo"></div></div>',
@@ -1407,11 +1407,11 @@ def render_full_report_page():
 # =========================================================
 # App shell
 # =========================================================
-st.sidebar.title("MFU-MCH-HSCS")
+st.sidebar.title("TH-HSCS")
 
 st.sidebar.markdown("### อัปโหลดไฟล์ข้อมูล HSCS")
 st.sidebar.caption(
-    "อัปโหลดไฟล์ Excel 2 ปีสำหรับใช้งานใน session นี้ รองรับทั้งไฟล์ export/raw และไฟล์ HSCS*_interac โดยไม่ต้องเก็บไฟล์ไว้ใน GitHub repo หรือ redeploy Render"
+    "อัปโหลดไฟล์ Excel 2 ปีสำหรับใช้งานใน session นี้ รองรับไฟล์ excel โดยไม่ต้องเก็บไฟล์ไว้ใน GitHub repo หรือ redeploy Render"
 )
 
 uploaded_year_data = {}
@@ -1461,7 +1461,7 @@ if st.sidebar.button("Clear cache / reload data"):
 st.sidebar.markdown("---")
 
 if not uploaded_year_data:
-    st.title("MFU-MCH HSCS Dashboard")
+    st.title("HSCS Dashboard")
     st.info(
         "กรุณาอัปโหลดไฟล์ Excel HSCS อย่างน้อย 1 ไฟล์จากแถบด้านซ้ายก่อนใช้งาน Dashboard และ Color-coded Matrix"
     )
@@ -1477,7 +1477,7 @@ if not uploaded_year_data:
     st.stop()
 
 if selected_year not in uploaded_year_data:
-    st.title("MFU-MCH HSCS Dashboard")
+    st.title("HSCS Dashboard")
     st.warning(f"กรุณาอัปโหลดไฟล์สำหรับ {HSCS_YEAR_CONFIG[selected_year]['label']} หรือเลือกปีที่อัปโหลดแล้ว")
     uploaded_labels = ", ".join([uploaded_year_data[y]["label"] for y in uploaded_year_data])
     if uploaded_labels:
