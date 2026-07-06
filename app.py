@@ -959,11 +959,11 @@ def render_overview_dashboard_page(excel_bytes: bytes, heatmap_sheet: str, year_
     dim_count = int(df["dimension"].nunique())
     sub_count = int(df[["sub_code", "sub_name"]].drop_duplicates().shape[0])
 
-st.markdown(
-    f'<div class="hscs-hero"><div class="hscs-hero-text"><h1>HSCS Dashboard</h1>'
-    f'<p>Hospital Safety Culture Survey: executive overview + drill-down Color-coded Matrix | {html.escape(year_label)}</p></div></div>',
-    unsafe_allow_html=True,
-)
+    st.markdown(
+        f'<div class="hscs-hero"><div class="hscs-hero-text"><h1>HSCS Dashboard</h1>'
+        f'<p>Hospital Safety Culture Survey: executive overview + drill-down Color-coded Matrix | {html.escape(year_label)}</p></div></div>',
+        unsafe_allow_html=True,
+    )
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Overall Positive Score", f"{overall_score:.1f}%", overall_status)
