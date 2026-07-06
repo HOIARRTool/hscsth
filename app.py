@@ -959,13 +959,11 @@ def render_overview_dashboard_page(excel_bytes: bytes, heatmap_sheet: str, year_
     dim_count = int(df["dimension"].nunique())
     sub_count = int(df[["sub_code", "sub_name"]].drop_duplicates().shape[0])
 
-    st.markdown(
-        f'<div class="hscs-hero"><div class="hscs-hero-text"><h1>HSCS Dashboard</h1>'
-        f'<p>Hospital Safety Culture Survey: executive overview + drill-down Color-coded Matrix | {html.escape(year_label)}</p></div>'
-        f'<div class="hscs-hero-logos"><img class="hscs-hero-logo" src="{MFU_LOGO_URL}" alt="Mae Fah Luang University logo">'
-        f'<img class="hscs-hero-logo" src="{HAI_LOGO_URL}" alt="Healthcare Accreditation Institute logo"></div></div>',
-        unsafe_allow_html=True,
-    )
+st.markdown(
+    f'<div class="hscs-hero"><div class="hscs-hero-text"><h1>HSCS Dashboard</h1>'
+    f'<p>Hospital Safety Culture Survey: executive overview + drill-down Color-coded Matrix | {html.escape(year_label)}</p></div></div>',
+    unsafe_allow_html=True,
+)
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Overall Positive Score", f"{overall_score:.1f}%", overall_status)
@@ -1365,45 +1363,6 @@ def render_heatmap_page(excel_bytes: bytes, heatmap_sheet: str, selected_page: s
         )
         st.dataframe(show_map, use_container_width=True, hide_index=True)
 
-
-# =========================================================
-# Full report page
-# =========================================================
-def render_full_report_page():
-    st.title("📘 การประมวลผล HSCS จากสรพ.")
-    st.markdown("Preview card ของแหล่งข้อมูล/เว็บไซต์ต้นทาง")
-
-    card_html = """
-    <div style="
-        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-        border: 1px solid #dce6f2;
-        border-radius: 18px;
-        padding: 18px 18px 12px 18px;
-        box-shadow: 0 6px 20px rgba(23,59,113,0.06);
-        margin-bottom: 14px;">
-        <div style="font-size: 24px; font-weight: 700; color: #173B71; margin-bottom: 6px;">
-            Hospital Safety Culture Survey (HSCS)
-        </div>
-        <div style="font-size: 15px; color: #4a678f; line-height: 1.6;">
-            การประมวลผล HSCS จาก สรพ. ปี 2567–2568
-            หน้านี้ใช้ <b>preview card</b> แทนการฝังเว็บตรง เพื่อให้แสดงผลเสถียรกว่า
-        </div>
-    </div>
-    """
-    st.markdown(card_html, unsafe_allow_html=True)
-
-    if REPORT_PREVIEW_IMAGE.exists():
-        st.image(str(REPORT_PREVIEW_IMAGE), use_container_width=True)
-    else:
-        st.info("ไม่พบภาพ preview ในแพ็กเกจ แต่ยังเปิดรายงานฉบับเต็มได้ตามปกติ")
-
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        st.link_button("🔗 เปิดการประมวลผล HSCS จากสรพ.", REPORT_URL, use_container_width=True)
-    with c2:
-        st.caption("ถ้าต้องการดูรายละเอียดทั้งหมด แนะนำให้เปิดในแท็บใหม่เพื่อการใช้งานที่ครบถ้วนที่สุด")
-
-
 # =========================================================
 # App shell
 # =========================================================
@@ -1503,7 +1462,7 @@ try:
 except Exception as exc:
     st.sidebar.warning(f"โหลดรายชื่อกลุ่มงานไม่ได้: {exc}")
 
-page_options = ["Dashboard ภาพรวม"] + heatmap_pages + ["การประมวลผล HSCS จากสรพ."]
+page_options = ["Dashboard ภาพรวม"] + heatmap_pages
 
 page = st.sidebar.radio(
     "เลือกหน้าที่ต้องการดู",
@@ -1526,7 +1485,5 @@ st.sidebar.markdown(
 
 if page == "Dashboard ภาพรวม":
     render_overview_dashboard_page(heatmap_source, heatmap_sheet, selected_config["label"], uploaded_payloads)
-elif page == "การประมวลผล HSCS จากสรพ.":
-    render_full_report_page()
 else:
     render_heatmap_page(heatmap_source, heatmap_sheet, page, selected_year)
